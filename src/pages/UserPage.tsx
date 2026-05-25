@@ -154,7 +154,7 @@ export default function UserPage() {
   if (state === 'checking') {
     return (
       <div className="page">
-        <h1>mirror</h1>
+        <h1><Link to="/">mirror</Link>/{user}</h1>
         <p>Loading…</p>
       </div>
     )
