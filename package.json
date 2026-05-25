@@ -1,0 +1,31 @@
+{
+  "name": "mirror",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite build && vite preview",
+    "deploy": "vite build && wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "13.3.0",
+    "@simplewebauthn/server": "13.3.0",
+    "hono": "4.12.16",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "react-router": "7.14.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.35.0",
+    "@cloudflare/workers-types": "4.20260503.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.1",
+    "typescript": "6.0.3",
+    "vite": "8.0.10",
+    "wrangler": "4.87.0"
+  }
+}

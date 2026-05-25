@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mirror",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/*/auth/*", "/*/counter/*", "/*/session", "/*/socket"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "USER", "class_name": "UserDO" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["UserDO"] }
+  ],
+  "routes": [
+    { "pattern": "mirror.benjaminbenben.com/*", "zone_name": "benjaminbenben.com" }
+  ],
+  "observability": { "logs": { "enabled": true } }
+}
