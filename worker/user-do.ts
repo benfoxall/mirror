@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 import { Hono } from 'hono'
+import { attachDeviceId, onConnect, onDisconnect, onMessage } from './rtc-signaling'
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -75,9 +76,13 @@ export class UserDO extends DurableObject<Env> {
     return this.app.fetch(request, this.env, this.ctx as unknown as ExecutionContext)
   }
 
-  async webSocketMessage(_ws: WebSocket, _message: string | ArrayBuffer): Promise<void> {}
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (typeof message !== 'string') return
+    await onMessage(ws, message, this.ctx.storage, this.ctx.getWebSockets())
+  }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
+    await onDisconnect(ws, this.ctx.storage, this.ctx.getWebSockets())
     ws.close()
   }
 
@@ -333,9 +338,12 @@ export class UserDO extends DurableObject<Env> {
     app.get('/socket', async (c) => {
       if (!this.checkSession(c.req.raw)) return c.text('Unauthorized', 401)
 
+      const deviceId = new URL(c.req.url).searchParams.get('deviceId') ?? crypto.randomUUID()
       const { 0: client, 1: server } = new WebSocketPair()
+      attachDeviceId(server, deviceId)
       this.ctx.acceptWebSocket(server)
       server.send(JSON.stringify({ type: 'counter', value: await this.getCounter() }))
+      await onConnect(server, deviceId, this.ctx.storage, this.ctx.getWebSockets())
       return new Response(null, { status: 101, webSocket: client })
     })
 
