@@ -113,3 +113,51 @@ button.secondary:hover {
   font-size: 0.9rem;
   margin-top: 0.5rem;
 }
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1e1e1e;
+    color: #d4d4d4;
+  }
+
+  p {
+    color: #9d9d9d;
+  }
+
+  input {
+    background: #3c3c3c;
+    color: #d4d4d4;
+    border-color: #3c3c3c;
+  }
+
+  input:focus {
+    outline-color: #007fd4;
+  }
+
+  button {
+    background: #0e639c;
+    color: #fff;
+  }
+
+  button:hover {
+    background: #1177bb;
+  }
+
+  button.secondary {
+    background: transparent;
+    color: #d4d4d4;
+    border-color: #454545;
+  }
+
+  button.secondary:hover {
+    background: #2a2d2e;
+  }
+
+  .status {
+    color: #6a9955;
+  }
+
+  .error {
+    color: #f14c4c;
+  }
+}
