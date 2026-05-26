@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 import { Hono } from 'hono'
+import { attachDeviceId, onConnect, onDisconnect, onMessage } from './rtc-signaling'
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -14,6 +15,8 @@ import type {
 
 export interface Env {
   USER: DurableObjectNamespace
+  TURN_KEY_ID?: string
+  TURN_KEY_TOKEN?: string
 }
 
 const RP_NAME = 'mirror'
@@ -75,9 +78,13 @@ export class UserDO extends DurableObject<Env> {
     return this.app.fetch(request, this.env, this.ctx as unknown as ExecutionContext)
   }
 
-  async webSocketMessage(_ws: WebSocket, _message: string | ArrayBuffer): Promise<void> {}
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (typeof message !== 'string') return
+    await onMessage(ws, message, this.ctx.storage, this.ctx.getWebSockets())
+  }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
+    await onDisconnect(ws, this.ctx.storage, this.ctx.getWebSockets())
     ws.close()
   }
 
@@ -171,6 +178,31 @@ export class UserDO extends DurableObject<Env> {
     for (const ws of this.ctx.getWebSockets()) {
       try { ws.send(msg) } catch { /* ignore closed */ }
     }
+  }
+
+  private async sendTurnCredentials(ws: WebSocket): Promise<void> {
+    const { TURN_KEY_ID, TURN_KEY_TOKEN } = this.env
+    if (!TURN_KEY_ID || !TURN_KEY_TOKEN) return
+    try {
+      const res = await fetch(
+        `https://rtc.live.cloudflare.com/v1/turn/keys/${TURN_KEY_ID}/credentials/generate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${TURN_KEY_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ttl: 86400 }),
+        },
+      )
+      if (!res.ok) return
+      const { iceServers } = await res.json() as {
+        iceServers: { urls: string[]; username: string; credential: string }
+      }
+      try {
+        ws.send(JSON.stringify({ type: 'ice-servers', iceServers: [iceServers] }))
+      } catch { /* WS closed before fetch completed */ }
+    } catch { /* network error — client falls back to STUN */ }
   }
 
   private checkSession(request: Request): boolean {
@@ -333,9 +365,13 @@ export class UserDO extends DurableObject<Env> {
     app.get('/socket', async (c) => {
       if (!this.checkSession(c.req.raw)) return c.text('Unauthorized', 401)
 
+      const deviceId = new URL(c.req.url).searchParams.get('deviceId') ?? crypto.randomUUID()
       const { 0: client, 1: server } = new WebSocketPair()
+      attachDeviceId(server, deviceId)
       this.ctx.acceptWebSocket(server)
       server.send(JSON.stringify({ type: 'counter', value: await this.getCounter() }))
+      await onConnect(server, deviceId, this.ctx.storage, this.ctx.getWebSockets())
+      void this.sendTurnCredentials(server)
       return new Response(null, { status: 101, webSocket: client })
     })
 

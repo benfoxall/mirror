@@ -1,9 +1,19 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router'
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
+import { useStreaming } from '../webrtc/useStreaming'
+import StreamingPanel from '../webrtc/StreamingPanel'
+import type { ServerMessage } from '../webrtc/types'
 
 type State = 'checking' | 'register' | 'login' | 'authing' | 'connected' | 'error'
 type WsStatus = 'connecting' | 'connected' | 'disconnected'
+
+function getOrCreateDeviceId(): string {
+  const key = 'mirror:deviceId'
+  let id = sessionStorage.getItem(key)
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(key, id) }
+  return id
+}
 
 export default function UserPage() {
   const { user } = useParams<{ user: string }>()
@@ -12,6 +22,17 @@ export default function UserPage() {
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting')
   const [error, setError] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
+  const [deviceId] = useState(getOrCreateDeviceId)
+
+  const sendWsMessage = useCallback((msg: object) => {
+    wsRef.current?.send(JSON.stringify(msg))
+  }, [])
+
+  const { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream } =
+    useStreaming(deviceId, sendWsMessage)
+
+  const handleMessageRef = useRef(handleMessage)
+  handleMessageRef.current = handleMessage
 
   // Check session on mount
   useEffect(() => {
@@ -34,7 +55,7 @@ export default function UserPage() {
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const ws = new WebSocket(`${proto}//${location.host}/${user}/socket`)
+      const ws = new WebSocket(`${proto}//${location.host}/${user}/socket?deviceId=${deviceId}`)
       wsRef.current = ws
 
       let pingTimer: ReturnType<typeof setTimeout>
@@ -64,8 +85,12 @@ export default function UserPage() {
           return
         }
         try {
-          const msg = JSON.parse(e.data as string) as { type: string; value: number }
-          if (msg.type === 'counter') setCounter(msg.value)
+          const msg = JSON.parse(e.data as string) as ServerMessage
+          if (msg.type === 'counter') {
+            setCounter(msg.value)
+          } else {
+            handleMessageRef.current(msg)
+          }
         } catch { /* ignore malformed */ }
       }
       ws.onclose = () => {
@@ -80,7 +105,7 @@ export default function UserPage() {
     return () => {
       wsRef.current?.close()
     }
-  }, [state, user])
+  }, [state, user, deviceId])
 
   async function register() {
     setState('authing')
@@ -213,6 +238,14 @@ export default function UserPage() {
         <span className="count">{counter ?? '…'}</span>
         <button onClick={increment} disabled={wsStatus !== 'connected'}>+1</button>
       </div>
+      <StreamingPanel
+        state={streamingState}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        streamError={streamError}
+        onStart={startStream}
+        onStop={stopStream}
+      />
       <div className="actions">
         <button className="secondary" onClick={logout}>sign out</button>
       </div>
