@@ -28,7 +28,7 @@ export default function UserPage() {
     wsRef.current?.send(JSON.stringify(msg))
   }, [])
 
-  const { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream } =
+  const { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream, switchCamera } =
     useStreaming(deviceId, sendWsMessage)
 
   const handleMessageRef = useRef(handleMessage)
@@ -245,6 +245,7 @@ export default function UserPage() {
         streamError={streamError}
         onStart={startStream}
         onStop={stopStream}
+        onSwitchCamera={switchCamera}
       />
       <div className="actions">
         <button className="secondary" onClick={logout}>sign out</button>
