@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/*/auth/*", "/*/counter/*", "/*/session", "/*/socket"]
+    "run_worker_first": ["/*/auth/*", "/*/session", "/*/socket"]
   },
   "durable_objects": {
     "bindings": [{ "name": "USER", "class_name": "UserDO" }]

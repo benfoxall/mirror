@@ -169,17 +169,6 @@ export class UserDO extends DurableObject<Env> {
     )][0] ?? null
   }
 
-  private async getCounter(): Promise<number> {
-    return (await this.ctx.storage.get<number>('counter')) ?? 0
-  }
-
-  private broadcastCounter(value: number): void {
-    const msg = JSON.stringify({ type: 'counter', value })
-    for (const ws of this.ctx.getWebSockets()) {
-      try { ws.send(msg) } catch { /* ignore closed */ }
-    }
-  }
-
   private async sendTurnCredentials(ws: WebSocket): Promise<void> {
     const { TURN_KEY_ID, TURN_KEY_TOKEN } = this.env
     if (!TURN_KEY_ID || !TURN_KEY_TOKEN) return
@@ -213,10 +202,10 @@ export class UserDO extends DurableObject<Env> {
   private setupRoutes(): void {
     const app = this.app
 
-    app.get('/session', async (c) => {
+    app.get('/session', (c) => {
       const sessionId = getSessionId(c.req.raw)
       if (sessionId && this.getValidSession(sessionId)) {
-        return c.json({ authenticated: true, registered: true, counter: await this.getCounter() })
+        return c.json({ authenticated: true, registered: true })
       }
       return c.json({ authenticated: false, registered: this.isRegistered() })
     })
@@ -369,19 +358,10 @@ export class UserDO extends DurableObject<Env> {
       const { 0: client, 1: server } = new WebSocketPair()
       attachDeviceId(server, deviceId)
       this.ctx.acceptWebSocket(server)
-      server.send(JSON.stringify({ type: 'counter', value: await this.getCounter() }))
       await onConnect(server, deviceId, this.ctx.storage, this.ctx.getWebSockets())
       void this.sendTurnCredentials(server)
       return new Response(null, { status: 101, webSocket: client })
     })
 
-    app.post('/counter/increment', async (c) => {
-      if (!this.checkSession(c.req.raw)) return c.text('Unauthorized', 401)
-
-      const counter = (await this.ctx.storage.get<number>('counter') ?? 0) + 1
-      await this.ctx.storage.put('counter', counter)
-      this.broadcastCounter(counter)
-      return c.json({ counter })
-    })
   }
 }

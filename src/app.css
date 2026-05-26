@@ -87,21 +87,6 @@ button.secondary:hover {
   margin-bottom: 1rem;
 }
 
-.counter-display {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin: 2rem 0;
-}
-
-.count {
-  font-size: 4rem;
-  font-weight: bold;
-  line-height: 1;
-  min-width: 4rem;
-  text-align: center;
-}
-
 .actions {
   display: flex;
   gap: 0.5rem;
@@ -112,6 +97,39 @@ button.secondary:hover {
   color: #c00;
   font-size: 0.9rem;
   margin-top: 0.5rem;
+}
+
+/* ── Username / sign-out ── */
+
+.user-label {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2em;
+}
+
+.signout-btn {
+  font-family: monospace;
+  font-size: 0.85em;
+  padding: 0;
+  background: none;
+  color: #999;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 1;
+  margin: 0;
+}
+
+.user-label:hover .signout-btn,
+.signout-btn:focus {
+  opacity: 1;
+}
+
+.signout-btn:hover {
+  color: #c00;
+  background: none;
 }
 
 /* ── Streaming ── */
