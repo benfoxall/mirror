@@ -16,6 +16,7 @@ export default function StreamingPanel({ state, localStream, remoteStream, strea
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isCover, setIsCover] = useState(true)
 
   useEffect(() => {
     if (localVideoRef.current) localVideoRef.current.srcObject = localStream
@@ -74,10 +75,14 @@ export default function StreamingPanel({ state, localStream, remoteStream, strea
           autoPlay
           playsInline
           muted
+          style={{ objectFit: isCover ? 'cover' : 'contain' }}
         />
         <div className="stream-viewer-controls">
+          <button className="secondary fullscreen-btn" onClick={() => setIsCover(c => !c)} title={isCover ? 'switch to fit' : 'switch to fill'}>
+            {isCover ? '⊡' : '⊠'}
+          </button>
           <button className="secondary fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'exit fullscreen' : 'fullscreen'}>
-            {isFullscreen ? '⛶' : '⛶'}
+            ⛶
           </button>
         </div>
         {!remoteStream && (
