@@ -12,6 +12,7 @@ export type ServerMessage =
   | { type: 'rtc-answer'; from: string; answer: RTCSessionDescriptionInit }
   | { type: 'rtc-ice'; from: string; candidate: RTCIceCandidateInit | null }
   | { type: 'counter'; value: number }
+  | { type: 'ice-servers'; iceServers: RTCIceServer[] }
 
 export interface StreamingState {
   role: 'idle' | 'streaming' | 'viewing'

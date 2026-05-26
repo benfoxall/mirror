@@ -1,7 +1,6 @@
 import type { ServerMessage, StreamingState, StreamType } from './types'
 
-// Cloudflare STUN + Google STUN as fallback
-const ICE_SERVERS: RTCIceServer[] = [
+const STUN_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.cloudflare.com:3478' },
   { urls: 'stun:stun.l.google.com:19302' },
 ]
@@ -14,6 +13,7 @@ export class PeerManager {
   private currentStreamerId: string | null = null
   private viewerIds = new Set<string>()
   private destroyed = false
+  private iceServers: RTCIceServer[] = STUN_SERVERS
 
   constructor(
     private readonly deviceId: string,
@@ -32,7 +32,7 @@ export class PeerManager {
   }
 
   private createPc(peerId: string): RTCPeerConnection {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+    const pc = new RTCPeerConnection({ iceServers: this.iceServers })
 
     pc.onicecandidate = ({ candidate }) => {
       this.send({ type: 'rtc-ice', to: peerId, candidate: candidate ? candidate.toJSON() : null })
@@ -262,6 +262,12 @@ export class PeerManager {
         if (pc && msg.candidate) {
           try { await pc.addIceCandidate(msg.candidate) } catch { /* ignore stale candidates */ }
         }
+        break
+      }
+
+      case 'ice-servers': {
+        // TURN credentials from server — used for all new connections going forward
+        this.iceServers = msg.iceServers
         break
       }
     }
