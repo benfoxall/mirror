@@ -67,7 +67,7 @@ export default function StreamingPanel({ state, localStream, remoteStream, strea
 
   if (state.role === 'viewing' || remoteStream) {
     return (
-      <div ref={containerRef} className={`stream-panel stream-panel--viewing${isFullscreen ? ' stream-panel--fullscreen' : ''}`}>
+      <div ref={containerRef} className="stream-panel stream-panel--viewing">
         <video
           ref={remoteVideoRef}
           className="remote-video"

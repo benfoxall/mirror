@@ -13,6 +13,8 @@ body {
 .page {
   max-width: 480px;
   padding: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 h1 {
@@ -176,12 +178,10 @@ button.secondary:hover {
 }
 
 .stream-panel--viewing {
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   background: #000;
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
 }
 
 .remote-video {
@@ -193,14 +193,13 @@ button.secondary:hover {
 
 .stream-viewer-controls {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.75rem;
+  right: 0.75rem;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-.stream-panel--viewing:hover .stream-viewer-controls,
-.stream-panel--fullscreen .stream-viewer-controls {
+.stream-panel--viewing:hover .stream-viewer-controls {
   opacity: 1;
 }
 
@@ -223,12 +222,8 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: #555;
   font-size: 0.9rem;
-}
-
-.stream-panel--fullscreen .remote-video {
-  object-fit: contain;
 }
 
 @media (prefers-color-scheme: dark) {
