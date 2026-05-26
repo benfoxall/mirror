@@ -69,6 +69,7 @@ export default function StreamingPanel({ state, localStream, remoteStream, strea
           className="remote-video"
           autoPlay
           playsInline
+          muted
         />
         <div className="stream-viewer-controls">
           <button className="secondary fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'exit fullscreen' : 'fullscreen'}>

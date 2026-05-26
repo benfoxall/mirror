@@ -114,10 +114,9 @@ export class PeerManager {
 
     let stream: MediaStream
     if (type === 'camera') {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
+      stream = await navigator.mediaDevices.getUserMedia({ video: true })
     } else {
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
     }
 
     if (this.destroyed) {
