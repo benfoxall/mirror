@@ -18,7 +18,6 @@ function getOrCreateDeviceId(): string {
 export default function UserPage() {
   const { user } = useParams<{ user: string }>()
   const [state, setState] = useState<State>('checking')
-  const [counter, setCounter] = useState<number | null>(null)
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting')
   const [error, setError] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
@@ -28,7 +27,7 @@ export default function UserPage() {
     wsRef.current?.send(JSON.stringify(msg))
   }, [])
 
-  const { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream } =
+  const { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream, switchCamera } =
     useStreaming(deviceId, sendWsMessage)
 
   const handleMessageRef = useRef(handleMessage)
@@ -37,10 +36,9 @@ export default function UserPage() {
   // Check session on mount
   useEffect(() => {
     fetch(`/${user}/session`)
-      .then(r => r.json() as Promise<{ authenticated: boolean; registered: boolean; counter?: number }>)
-      .then(({ authenticated, registered, counter: c }) => {
+      .then(r => r.json() as Promise<{ authenticated: boolean; registered: boolean }>)
+      .then(({ authenticated, registered }) => {
         if (authenticated) {
-          setCounter(c ?? 0)
           setState('connected')
         } else {
           setState(registered ? 'login' : 'register')
@@ -86,11 +84,7 @@ export default function UserPage() {
         }
         try {
           const msg = JSON.parse(e.data as string) as ServerMessage
-          if (msg.type === 'counter') {
-            setCounter(msg.value)
-          } else {
-            handleMessageRef.current(msg)
-          }
+          handleMessageRef.current(msg)
         } catch { /* ignore malformed */ }
       }
       ws.onclose = () => {
@@ -128,7 +122,6 @@ export default function UserPage() {
       })
       if (!verifyRes.ok) throw new Error((await verifyRes.json() as { error: string }).error)
 
-      setCounter(0)
       setState('connected')
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') { setState('register'); return }
@@ -154,20 +147,12 @@ export default function UserPage() {
       })
       if (!verifyRes.ok) throw new Error((await verifyRes.json() as { error: string }).error)
 
-      const sessionRes = await fetch(`/${user}/session`)
-      const { counter: c } = await sessionRes.json() as { counter: number }
-      setCounter(c)
       setState('connected')
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') { setState('login'); return }
       setError(e instanceof Error ? e.message : String(e))
       setState('login')
     }
-  }
-
-  async function increment() {
-    await fetch(`/${user}/counter/increment`, { method: 'POST' })
-    // counter updates via WS broadcast
   }
 
   async function logout() {
@@ -233,11 +218,12 @@ export default function UserPage() {
   // state === 'connected'
   return (
     <div className="page">
-      <h1><Link to="/">mirror</Link>/{user} <span className="status">{wsStatus}</span></h1>
-      <div className="counter-display">
-        <span className="count">{counter ?? '…'}</span>
-        <button onClick={increment} disabled={wsStatus !== 'connected'}>+1</button>
-      </div>
+      <h1>
+        <Link to="/">mirror</Link>/<span className="user-label">
+          {user}<button className="signout-btn" onClick={logout} title="sign out">×</button>
+        </span>
+        {' '}<span className="status">{wsStatus}</span>
+      </h1>
       <StreamingPanel
         state={streamingState}
         localStream={localStream}
@@ -245,10 +231,8 @@ export default function UserPage() {
         streamError={streamError}
         onStart={startStream}
         onStop={stopStream}
+        onSwitchCamera={switchCamera}
       />
-      <div className="actions">
-        <button className="secondary" onClick={logout}>sign out</button>
-      </div>
     </div>
   )
 }

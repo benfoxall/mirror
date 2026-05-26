@@ -13,6 +13,8 @@ body {
 .page {
   max-width: 480px;
   padding: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 h1 {
@@ -87,21 +89,6 @@ button.secondary:hover {
   margin-bottom: 1rem;
 }
 
-.counter-display {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin: 2rem 0;
-}
-
-.count {
-  font-size: 4rem;
-  font-weight: bold;
-  line-height: 1;
-  min-width: 4rem;
-  text-align: center;
-}
-
 .actions {
   display: flex;
   gap: 0.5rem;
@@ -112,6 +99,39 @@ button.secondary:hover {
   color: #c00;
   font-size: 0.9rem;
   margin-top: 0.5rem;
+}
+
+/* ── Username / sign-out ── */
+
+.user-label {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2em;
+}
+
+.signout-btn {
+  font-family: monospace;
+  font-size: 0.85em;
+  padding: 0;
+  background: none;
+  color: #999;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 1;
+  margin: 0;
+}
+
+.user-label:hover .signout-btn,
+.signout-btn:focus {
+  opacity: 1;
+}
+
+.signout-btn:hover {
+  color: #c00;
+  background: none;
 }
 
 /* ── Streaming ── */
@@ -158,12 +178,10 @@ button.secondary:hover {
 }
 
 .stream-panel--viewing {
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   background: #000;
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
 }
 
 .remote-video {
@@ -175,14 +193,13 @@ button.secondary:hover {
 
 .stream-viewer-controls {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.75rem;
+  right: 0.75rem;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-.stream-panel--viewing:hover .stream-viewer-controls,
-.stream-panel--fullscreen .stream-viewer-controls {
+.stream-panel--viewing:hover .stream-viewer-controls {
   opacity: 1;
 }
 
@@ -205,12 +222,8 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: #555;
   font-size: 0.9rem;
-}
-
-.stream-panel--fullscreen .remote-video {
-  object-fit: contain;
 }
 
 @media (prefers-color-scheme: dark) {

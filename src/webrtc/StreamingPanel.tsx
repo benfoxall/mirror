@@ -8,9 +8,10 @@ interface Props {
   streamError: string | null
   onStart: (type: StreamType) => void
   onStop: () => void
+  onSwitchCamera: () => void
 }
 
-export default function StreamingPanel({ state, localStream, remoteStream, streamError, onStart, onStop }: Props) {
+export default function StreamingPanel({ state, localStream, remoteStream, streamError, onStart, onStop, onSwitchCamera }: Props) {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -46,6 +47,9 @@ export default function StreamingPanel({ state, localStream, remoteStream, strea
           <span>
             {state.streamType === 'camera' ? 'camera' : 'screen'} → {state.viewerCount} device{state.viewerCount !== 1 ? 's' : ''}
           </span>
+          {state.streamType === 'camera' && (
+            <button className="secondary" onClick={onSwitchCamera} title="Switch camera">⟳</button>
+          )}
           <button className="secondary stream-stop-btn" onClick={onStop}>stop</button>
         </div>
         {localStream && (
@@ -63,12 +67,13 @@ export default function StreamingPanel({ state, localStream, remoteStream, strea
 
   if (state.role === 'viewing' || remoteStream) {
     return (
-      <div ref={containerRef} className={`stream-panel stream-panel--viewing${isFullscreen ? ' stream-panel--fullscreen' : ''}`}>
+      <div ref={containerRef} className="stream-panel stream-panel--viewing">
         <video
           ref={remoteVideoRef}
           className="remote-video"
           autoPlay
           playsInline
+          muted
         />
         <div className="stream-viewer-controls">
           <button className="secondary fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'exit fullscreen' : 'fullscreen'}>

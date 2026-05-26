@@ -40,5 +40,9 @@ export function useStreaming(deviceId: string, send: (msg: object) => void) {
     await managerRef.current?.stopStream()
   }, [])
 
-  return { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream }
+  const switchCamera = useCallback(async () => {
+    await managerRef.current?.switchCamera()
+  }, [])
+
+  return { streamingState, localStream, remoteStream, streamError, handleMessage, startStream, stopStream, switchCamera }
 }

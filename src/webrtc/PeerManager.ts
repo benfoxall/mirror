@@ -14,6 +14,7 @@ export class PeerManager {
   private viewerIds = new Set<string>()
   private destroyed = false
   private iceServers: RTCIceServer[] = STUN_SERVERS
+  private facingMode: 'user' | 'environment' = 'environment'
 
   constructor(
     private readonly deviceId: string,
@@ -109,15 +110,53 @@ export class PeerManager {
     }
   }
 
+  async switchCamera(): Promise<void> {
+    if (!this.localStream || !this.isStreaming || this.streamType !== 'camera') return
+
+    const nextFacing = this.facingMode === 'environment' ? 'user' : 'environment'
+    let newStream: MediaStream
+    try {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: nextFacing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      })
+    } catch {
+      return // device doesn't support this facing mode — silently skip
+    }
+
+    const newTrack = newStream.getVideoTracks()[0]
+    if (!newTrack) { newStream.getTracks().forEach(t => t.stop()); return }
+
+    const oldTrack = this.localStream.getVideoTracks()[0]
+    if (oldTrack) {
+      oldTrack.onended = null
+      this.localStream.removeTrack(oldTrack)
+      oldTrack.stop()
+    }
+    newTrack.onended = () => this.stopStream()
+    this.localStream.addTrack(newTrack)
+
+    await Promise.all(
+      [...this.pcs.values()].map(pc => {
+        const sender = pc.getSenders().find(s => s.track?.kind === 'video')
+        return sender ? sender.replaceTrack(newTrack) : Promise.resolve()
+      })
+    )
+
+    this.facingMode = nextFacing
+    this.onLocalStream(this.localStream)
+  }
+
   async startStream(type: StreamType): Promise<void> {
     if (this.localStream) this.clearLocalState()
 
     let stream: MediaStream
     if (type === 'camera') {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
+      this.facingMode = 'environment'
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      }).catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
     } else {
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
     }
 
     if (this.destroyed) {
