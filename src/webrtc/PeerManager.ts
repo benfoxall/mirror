@@ -40,11 +40,20 @@ export class PeerManager {
     }
 
     pc.oniceconnectionstatechange = () => {
-      // Trigger ICE restart on transient failures; persistent failures handled by connectionstatechange
+      console.log(`[RTC] ICE state → ${pc.iceConnectionState} (peer: ${peerId})`)
       if (pc.iceConnectionState === 'failed') pc.restartIce()
     }
 
+    pc.onicegatheringstatechange = () => {
+      console.log(`[RTC] ICE gathering → ${pc.iceGatheringState} (peer: ${peerId})`)
+    }
+
+    pc.onsignalingstatechange = () => {
+      console.log(`[RTC] Signaling → ${pc.signalingState} (peer: ${peerId})`)
+    }
+
     pc.onconnectionstatechange = () => {
+      console.log(`[RTC] Connection → ${pc.connectionState} (peer: ${peerId})`)
       if (pc.connectionState === 'failed') {
         setTimeout(() => this.restartConnection(peerId), 2_000)
       }
