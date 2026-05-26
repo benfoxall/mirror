@@ -116,7 +116,9 @@ export class PeerManager {
     const nextFacing = this.facingMode === 'environment' ? 'user' : 'environment'
     let newStream: MediaStream
     try {
-      newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: nextFacing } })
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: nextFacing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      })
     } catch {
       return // device doesn't support this facing mode — silently skip
     }
@@ -150,8 +152,9 @@ export class PeerManager {
     let stream: MediaStream
     if (type === 'camera') {
       this.facingMode = 'environment'
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      }).catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
     } else {
       stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
     }
