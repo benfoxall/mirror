@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite build && vite preview",
     "deploy": "vite build && wrangler deploy",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@simplewebauthn/browser": "13.3.0",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.35.0",
     "@cloudflare/workers-types": "4.20260503.1",
+    "@playwright/test": "^1.60.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.1",
