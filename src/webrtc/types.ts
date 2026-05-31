@@ -6,7 +6,6 @@ export type ServerMessage =
   | { type: 'stream-stopped'; streamerId: string }
   | { type: 'stream-replaced' }
   | { type: 'viewer-ready'; from: string }
-  | { type: 'device-connected'; deviceId: string }
   | { type: 'device-disconnected'; deviceId: string }
   | { type: 'rtc-offer'; from: string; offer: RTCSessionDescriptionInit }
   | { type: 'rtc-answer'; from: string; answer: RTCSessionDescriptionInit }

@@ -51,16 +51,10 @@ function getSessionId(request: Request): string | null {
   return cookie.match(/(?:^|;\s*)__session=([^;]+)/)?.[1] ?? null
 }
 
-function makeSessionCookie(id: string, request: Request): string {
+function sessionCookie(id: string, maxAge: number, request: Request): string {
   const isLocal = new URL(request.url).hostname === 'localhost'
   const secure = isLocal ? '' : '; Secure'
-  return `__session=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${secure}`
-}
-
-function clearSessionCookie(request: Request): string {
-  const isLocal = new URL(request.url).hostname === 'localhost'
-  const secure = isLocal ? '' : '; Secure'
-  return `__session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`
+  return `__session=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secure}`
 }
 
 export class UserDO extends DurableObject<Env> {
@@ -108,7 +102,8 @@ export class UserDO extends DurableObject<Env> {
         expires_at INTEGER NOT NULL
       );
     `)
-    // Clean up legacy schema
+    // Clean up legacy schema. These run on every init by design: a DO created
+    // before the schema change may still carry the old table/column.
     this.ctx.storage.sql.exec(`DROP TABLE IF EXISTS user`)
     try { this.ctx.storage.sql.exec(`ALTER TABLE credentials DROP COLUMN created_at`) } catch { /* already gone */ }
   }
@@ -203,8 +198,7 @@ export class UserDO extends DurableObject<Env> {
     const app = this.app
 
     app.get('/session', (c) => {
-      const sessionId = getSessionId(c.req.raw)
-      if (sessionId && this.getValidSession(sessionId)) {
+      if (this.checkSession(c.req.raw)) {
         return c.json({ authenticated: true, registered: true })
       }
       return c.json({ authenticated: false, registered: this.isRegistered() })
@@ -270,7 +264,7 @@ export class UserDO extends DurableObject<Env> {
 
       const sessionId = this.createSession()
       return c.json({ success: true }, {
-        headers: { 'Set-Cookie': makeSessionCookie(sessionId, c.req.raw) },
+        headers: { 'Set-Cookie': sessionCookie(sessionId, SESSION_TTL / 1000, c.req.raw) },
       })
     })
 
@@ -283,9 +277,9 @@ export class UserDO extends DurableObject<Env> {
         rpID: rpId,
         userVerification: 'preferred',
         allowCredentials: credentials.map((cr) => ({
-          id: cr.credential_id as string,
+          id: cr.credential_id,
           transports: cr.transports
-            ? (JSON.parse(cr.transports as string) as AuthenticatorTransportFuture[])
+            ? (JSON.parse(cr.transports) as AuthenticatorTransportFuture[])
             : undefined,
         })),
       })
@@ -317,11 +311,11 @@ export class UserDO extends DurableObject<Env> {
           expectedOrigin,
           expectedRPID: rpId,
           credential: {
-            id: credRow.credential_id as string,
-            publicKey: new Uint8Array(credRow.public_key as ArrayBuffer),
-            counter: credRow.counter as number,
+            id: credRow.credential_id,
+            publicKey: new Uint8Array(credRow.public_key),
+            counter: credRow.counter,
             transports: credRow.transports
-              ? (JSON.parse(credRow.transports as string) as AuthenticatorTransportFuture[])
+              ? (JSON.parse(credRow.transports) as AuthenticatorTransportFuture[])
               : undefined,
           },
         })
@@ -334,12 +328,12 @@ export class UserDO extends DurableObject<Env> {
       this.ctx.storage.sql.exec(
         'UPDATE credentials SET counter = ? WHERE credential_id = ?',
         verification.authenticationInfo.newCounter,
-        credRow.credential_id as string
+        credRow.credential_id
       )
 
       const sessionId = this.createSession()
       return c.json({ success: true }, {
-        headers: { 'Set-Cookie': makeSessionCookie(sessionId, c.req.raw) },
+        headers: { 'Set-Cookie': sessionCookie(sessionId, SESSION_TTL / 1000, c.req.raw) },
       })
     })
 
@@ -347,7 +341,7 @@ export class UserDO extends DurableObject<Env> {
       const sessionId = getSessionId(c.req.raw)
       if (sessionId) this.deleteSession(sessionId)
       return c.json({ success: true }, {
-        headers: { 'Set-Cookie': clearSessionCookie(c.req.raw) },
+        headers: { 'Set-Cookie': sessionCookie('', 0, c.req.raw) },
       })
     })
 
@@ -358,7 +352,7 @@ export class UserDO extends DurableObject<Env> {
       const { 0: client, 1: server } = new WebSocketPair()
       attachDeviceId(server, deviceId)
       this.ctx.acceptWebSocket(server)
-      await onConnect(server, deviceId, this.ctx.storage, this.ctx.getWebSockets())
+      await onConnect(server, this.ctx.storage)
       void this.sendTurnCredentials(server)
       return new Response(null, { status: 101, webSocket: client })
     })
