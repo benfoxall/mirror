@@ -1,5 +1,5 @@
 # mirror
 
-mirror your camera and devices to other screens
-
 A thing for Dan
+
+share your camera or screen to other devices

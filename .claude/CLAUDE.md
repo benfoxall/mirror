@@ -1,6 +1,6 @@
 # mirror
 
-mirror your camera and devices to other screens. Passkey (WebAuthn) auth + WebRTC device-to-device streaming on Cloudflare Workers. Each user gets a Durable Object that owns their credentials, sessions, and the WebSocket connections used to relay WebRTC signaling between that user's devices (mirror camera/screen from one device to another).
+share your camera or screen to other devices. Passkey (WebAuthn) auth + WebRTC device-to-device streaming on Cloudflare Workers. Each user gets a Durable Object that owns their credentials, sessions, and the WebSocket connections used to relay WebRTC signaling between that user's devices (mirror camera/screen from one device to another).
 
 ## Commands
 
