@@ -144,3 +144,8 @@ vite.config.ts.timestamp-*
 
 # Wrangler local state
 .wrangler/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

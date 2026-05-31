@@ -5,6 +5,12 @@ const STUN_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
 ]
 
+// Verbose per-event RTC tracing — opt in with localStorage.setItem('mirror:debug', '1')
+const DEBUG = typeof localStorage !== 'undefined' && localStorage.getItem('mirror:debug') === '1'
+function debug(...args: unknown[]): void {
+  if (DEBUG) console.log('[RTC]', ...args)
+}
+
 export class PeerManager {
   private localStream: MediaStream | null = null
   private pcs = new Map<string, RTCPeerConnection>()
@@ -40,20 +46,20 @@ export class PeerManager {
     }
 
     pc.oniceconnectionstatechange = () => {
-      console.log(`[RTC] ICE state → ${pc.iceConnectionState} (peer: ${peerId})`)
+      debug(`ICE state → ${pc.iceConnectionState} (peer: ${peerId})`)
       if (pc.iceConnectionState === 'failed') pc.restartIce()
     }
 
     pc.onicegatheringstatechange = () => {
-      console.log(`[RTC] ICE gathering → ${pc.iceGatheringState} (peer: ${peerId})`)
+      debug(`ICE gathering → ${pc.iceGatheringState} (peer: ${peerId})`)
     }
 
     pc.onsignalingstatechange = () => {
-      console.log(`[RTC] Signaling → ${pc.signalingState} (peer: ${peerId})`)
+      debug(`Signaling → ${pc.signalingState} (peer: ${peerId})`)
     }
 
     pc.onconnectionstatechange = () => {
-      console.log(`[RTC] Connection → ${pc.connectionState} (peer: ${peerId})`)
+      debug(`Connection → ${pc.connectionState} (peer: ${peerId})`)
       if (pc.connectionState === 'failed') {
         setTimeout(() => this.restartConnection(peerId), 2_000)
       }
@@ -193,12 +199,12 @@ export class PeerManager {
     this.emitState()
   }
 
-  private clearLocalState(): void {
+  private clearLocalState(notifyServer = true): void {
     this.localStream?.getTracks().forEach(t => t.stop())
     this.localStream = null
     if (this.isStreaming) {
       this.isStreaming = false
-      this.send({ type: 'stream-stop' })
+      if (notifyServer) this.send({ type: 'stream-stop' })
     }
     for (const pc of this.pcs.values()) pc.close()
     this.pcs.clear()
@@ -254,15 +260,9 @@ export class PeerManager {
       }
 
       case 'stream-replaced': {
-        // Another device took over streaming
-        this.localStream?.getTracks().forEach(t => t.stop())
-        this.localStream = null
-        this.isStreaming = false
-        for (const pc of this.pcs.values()) pc.close()
-        this.pcs.clear()
-        this.viewerIds.clear()
-        this.streamType = null
-        this.onLocalStream(null)
+        // Another device took over streaming — server already reassigned, so
+        // tear down locally without echoing a stream-stop back.
+        this.clearLocalState(false)
         this.emitState()
         break
       }

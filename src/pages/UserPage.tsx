@@ -8,6 +8,10 @@ import type { ServerMessage } from '../webrtc/types'
 type State = 'checking' | 'register' | 'login' | 'authing' | 'connected' | 'error'
 type WsStatus = 'connecting' | 'connected' | 'disconnected'
 
+const PING_INTERVAL_MS = 5_000
+const PONG_TIMEOUT_MS = 5_000
+const RECONNECT_DELAY_MS = 3_000
+
 function getOrCreateDeviceId(): string {
   const key = 'mirror:deviceId'
   let id = sessionStorage.getItem(key)
@@ -66,9 +70,9 @@ export default function UserPage() {
             pongTimeout = setTimeout(() => {
               setWsStatus('disconnected')
               ws.close()
-            }, 5_000)
+            }, PONG_TIMEOUT_MS)
           }
-        }, 5_000)
+        }, PING_INTERVAL_MS)
       }
 
       ws.onopen = () => {
@@ -91,7 +95,7 @@ export default function UserPage() {
         clearTimeout(pingTimer)
         clearTimeout(pongTimeout)
         setWsStatus('disconnected')
-        setTimeout(connect, 3_000)
+        setTimeout(connect, RECONNECT_DELAY_MS)
       }
     }
 
@@ -101,123 +105,103 @@ export default function UserPage() {
     }
   }, [state, user, deviceId])
 
-  async function register() {
+  async function runAuth(kind: 'register' | 'login') {
+    const prevState = kind === 'register' ? 'register' : 'login'
     setState('authing')
     setError('')
     try {
-      const optsRes = await fetch(`/${user}/auth/register/options`, {
+      const optsRes = await fetch(`/${user}/auth/${kind}/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user }),
+        body: kind === 'register' ? JSON.stringify({ username: user }) : undefined,
       })
       if (!optsRes.ok) throw new Error((await optsRes.json() as { error: string }).error)
       const opts = await optsRes.json()
 
-      const credential = await startRegistration({ optionsJSON: opts })
+      const credential = kind === 'register'
+        ? await startRegistration({ optionsJSON: opts })
+        : await startAuthentication({ optionsJSON: opts })
 
-      const verifyRes = await fetch(`/${user}/auth/register/verify`, {
+      const verifyRes = await fetch(`/${user}/auth/${kind}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, credential }),
+        body: JSON.stringify(kind === 'register' ? { username: user, credential } : { credential }),
       })
       if (!verifyRes.ok) throw new Error((await verifyRes.json() as { error: string }).error)
 
       setState('connected')
     } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') { setState('register'); return }
+      if (e instanceof Error && e.name === 'AbortError') { setState(prevState); return }
       setError(e instanceof Error ? e.message : String(e))
-      setState('register')
-    }
-  }
-
-  async function login() {
-    setState('authing')
-    setError('')
-    try {
-      const optsRes = await fetch(`/${user}/auth/login/options`, { method: 'POST' })
-      if (!optsRes.ok) throw new Error((await optsRes.json() as { error: string }).error)
-      const opts = await optsRes.json()
-
-      const credential = await startAuthentication({ optionsJSON: opts })
-
-      const verifyRes = await fetch(`/${user}/auth/login/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential }),
-      })
-      if (!verifyRes.ok) throw new Error((await verifyRes.json() as { error: string }).error)
-
-      setState('connected')
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') { setState('login'); return }
-      setError(e instanceof Error ? e.message : String(e))
-      setState('login')
+      setState(prevState)
     }
   }
 
   async function logout() {
-    await fetch(`/${user}/auth/logout`, { method: 'POST' })
+    try {
+      await fetch(`/${user}/auth/logout`, { method: 'POST' })
+    } catch { /* clear local state regardless */ }
     wsRef.current?.close()
     setState('login')
   }
 
   if (state === 'checking') {
     return (
-      <div className="page">
+      <main className="page">
         <h1><Link to="/">mirror</Link>/{user}</h1>
         <p>Loading…</p>
-      </div>
+      </main>
     )
   }
 
   if (state === 'register') {
     return (
-      <div className="page">
+      <main className="page">
         <h1><Link to="/">mirror</Link>/{user}</h1>
         <p>No account found. Create one with a passkey.</p>
         {error && <p className="error">{error}</p>}
         <div className="actions">
-          <button onClick={register}>Register as {user}</button>
+          <button onClick={() => runAuth('register')}>Register as {user}</button>
         </div>
-      </div>
+      </main>
     )
   }
 
   if (state === 'login') {
     return (
-      <div className="page">
+      <main className="page">
         <h1><Link to="/">mirror</Link>/{user}</h1>
         <p>Sign in with your passkey.</p>
         {error && <p className="error">{error}</p>}
         <div className="actions">
-          <button onClick={login}>Sign in as {user}</button>
+          <button onClick={() => runAuth('login')}>Sign in as {user}</button>
         </div>
-      </div>
+      </main>
     )
   }
 
   if (state === 'authing') {
     return (
-      <div className="page">
+      <main className="page">
         <h1><Link to="/">mirror</Link>/{user}</h1>
         <p>Follow the prompt on your device…</p>
-      </div>
+      </main>
     )
   }
 
   if (state === 'error') {
     return (
-      <div className="page">
+      <main className="page">
         <h1><Link to="/">mirror</Link>/{user}</h1>
         <p className="error">Something went wrong.</p>
         <button onClick={() => setState('checking')}>retry</button>
-      </div>
+      </main>
     )
   }
 
   // state === 'connected'
   return (
-    <div className="page">
+    <main className="page">
       <h1>
         <Link to="/">mirror</Link>/<span className="user-label">
           {user}<button className="signout-btn" onClick={logout} title="sign out">×</button>
@@ -233,6 +217,6 @@ export default function UserPage() {
         onStop={stopStream}
         onSwitchCamera={switchCamera}
       />
-    </div>
+    </main>
   )
 }

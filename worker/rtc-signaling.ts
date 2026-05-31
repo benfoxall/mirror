@@ -34,20 +34,10 @@ export function attachDeviceId(ws: WebSocket, deviceId: string): void {
   ws.serializeAttachment({ deviceId })
 }
 
-export function getDeviceId(ws: WebSocket): string | null {
-  return getAttachment(ws)?.deviceId ?? null
-}
-
-export async function onConnect(
-  ws: WebSocket,
-  deviceId: string,
-  storage: DurableObjectStorage,
-  sockets: WebSocket[],
-): Promise<void> {
+export async function onConnect(ws: WebSocket, storage: DurableObjectStorage): Promise<void> {
   const streamerId = (await storage.get<string>('rtc:streamer:id')) ?? null
   const streamType = (await storage.get<string>('rtc:streamer:type')) ?? null
   ws.send(JSON.stringify({ type: 'streamer-info', streamerId, streamType }))
-  broadcast(sockets, { type: 'device-connected', deviceId }, deviceId)
 }
 
 export async function onDisconnect(
